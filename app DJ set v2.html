@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DJ Set</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --darkblue: #001f46;
+      --blue: #022d5a;
+      --bg: #002e5c;
+      --bluegris: #3982a3;
+      --blueciel: #61c3d3;
+      --rose: #f39fa3;
+      --rouge: #e8375f;
+      --orange: #f59923;
+      --vert: #77ba4e;
+      --jaune: #fecd4f;
+      --answer-bg: rgba(0, 80, 137, 0.51);
+    }
+
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Arial Rounded MT Bold', 'Nunito', 'Arial', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .screen {
+      height: 100vh;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+    .screen.visible { display: flex; }
+
+    /* ─── Fond rainures radiales ─── */
+    #screen-player {
+      background:
+        repeating-radial-gradient(circle at 50% 20%,
+          transparent 0px, transparent 16px,
+          rgba(120, 180, 255, 0.06) 16px, rgba(120, 180, 255, 0.06) 18px),
+        radial-gradient(circle at 50% 20%, #0a4a8a 0%, var(--blue) 35%, var(--darkblue) 100%);
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════ ÉCRAN MENU ═══════════ */
+    #screen-menu {
+      background:
+        repeating-radial-gradient(circle at 50% 30%,
+          transparent 0px, transparent 16px,
+          rgba(120, 180, 255, 0.05) 16px, rgba(120, 180, 255, 0.05) 18px),
+        radial-gradient(circle at 50% 30%, #0a4a8a 0%, var(--blue) 40%, var(--darkblue) 100%);
+      justify-content: center;
+      gap: 30px;
+    }
+
+    #themes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 14px;
+      width: 92%;
+      max-width: 640px;
+    }
+
+    .theme-tile {
+      background: var(--answer-bg);
+      border: none;
+      border-radius: 16px;
+      color: #fff;
+      padding: 20px 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      transition: transform 0.15s, background 0.15s;
+    }
+    .theme-tile:hover { transform: scale(1.04); background: rgba(0, 80, 137, 0.75); }
+
+    .theme-dot {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.35);
+    }
+
+    #btn-spotify-login {
+      background: #1db954;
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 12px 26px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #btn-spotify-login:hover { filter: brightness(1.1); }
+
+    /* ═══════════ ÉCRAN PLAYER ═══════════ */
+
+    #btn-menu {
+      position: absolute;
+      top: 16px; left: 20px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      opacity: 0.85;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 5;
+    }
+    #btn-menu:hover { opacity: 1; }
+
+    /* ─── Disques (cluster superposé, style olemains) ─── */
+    #disques-zone {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .disques-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .disc {
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      position: relative;
+      transition: width 0.4s ease, height 0.4s ease, margin 0.4s ease, opacity 0.4s ease;
+      width: 46px; height: 46px;
+      margin-left: -28px;
+      opacity: 0.9;
+      box-shadow: 0 0 14px rgba(0,0,0,0.4);
+    }
+    .disc:first-child { margin-left: 0; }
+
+    .disc.active {
+      width: 180px; height: 180px;
+      opacity: 1;
+      z-index: 3;
+      box-shadow: 0 0 0 10px rgba(0,20,50,0.55), 0 0 60px rgba(0,0,0,0.6);
+      animation: spin 8s linear infinite;
+      animation-play-state: paused;
+    }
+    .disc.active.playing { animation-play-state: running; }
+
+    .disc.near1 { width: 78px; height: 78px; z-index: 2; }
+    .disc.near2 { width: 56px; height: 56px; z-index: 1; }
+
+    /* Sillons vinyle : arcs blancs haut/bas comme olemains */
+    .disc::before {
+      content: '';
+      position: absolute;
+      inset: 6%;
+      border-radius: 50%;
+      background: repeating-radial-gradient(
+        circle at center,
+        transparent 0px, transparent 4px,
+        rgba(255,255,255,0.35) 4px, rgba(255,255,255,0.35) 5px
+      );
+      -webkit-mask: linear-gradient(180deg, #000 0%, transparent 38%, transparent 62%, #000 100%);
+      mask: linear-gradient(180deg, #000 0%, transparent 38%, transparent 62%, #000 100%);
+    }
+
+    .disc-label {
+      border-radius: 50%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      z-index: 1;
+      position: relative;
+      transition: width 0.4s ease, height 0.4s ease, font-size 0.4s ease;
+      width: 22px; height: 22px;
+      font-size: 0.6rem;
+    }
+    .disc.active .disc-label { width: 64px; height: 64px; font-size: 1.8rem; }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* ─── Bandeau réponse pleine largeur ─── */
+    #btn-reponse {
+      background: var(--answer-bg);
+      border: none;
+      color: #fff;
+      width: 100%;
+      padding: 26px;
+      font-family: inherit;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      margin-bottom: 24px;
+    }
+    #btn-reponse:hover { background: rgba(0, 80, 137, 0.7); }
+    #btn-reponse .icon { font-size: 1.3rem; }
+    #reponse-text {
+      font-size: 1.7rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      display: none;
+    }
+    #btn-reponse.revealed .label-default { display: none; }
+    #btn-reponse.revealed #reponse-text { display: block; }
+
+    /* ─── Zone play : bouton play centré + anneau timer vert ─── */
+    #play-zone {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      margin-bottom: 26px;
+    }
+
+    /* Fenêtre qui ne laisse voir que le bouton play du widget Spotify */
+    #spotify-window {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #fff;
+      z-index: 2;
+    }
+
+    /* Le widget fait 80px de haut, bouton play ~à droite : on cale l'iframe
+       pour que son bouton play tombe dans la fenêtre */
+    #spotify-embed {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 300px;
+      height: 80px;
+      border: none;
+      /* zoom sur le bouton play pour masquer les éléments voisins du widget */
+      transform: scale(1.5);
+      transform-origin: calc(100% - 28px) 46px;
+    }
+
+    /* Anneau sombre autour du play */
+    #play-ring {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+    #ring-bg {
+      fill: none;
+      stroke: var(--darkblue);
+      stroke-width: 10;
+    }
+    /* Petit segment vert qui tourne autour de l'anneau (progression 30s) */
+    #timer-circle {
+      fill: none;
+      stroke: var(--vert);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 22 261;
+      stroke-dashoffset: 0;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    #timer-circle.done { stroke: var(--rouge); }
+
+    #no-track {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      z-index: 3;
+    }
+    #play-zone.empty #no-track { display: flex; }
+    #play-zone.empty #spotify-window { display: none; }
+
+    /* ─── Navigation ─── */
+    #nav-bar {
+      position: absolute;
+      bottom: 30px; right: 30px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #progress-text {
+      font-size: 0.85rem;
+      opacity: 0.5;
+      letter-spacing: 0.1em;
+    }
+
+    #btn-suivant {
+      background: none;
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0.9;
+    }
+    #btn-suivant:hover { opacity: 1; }
+    #btn-suivant .arrow { font-size: 1.3rem; }
+    #btn-suivant:disabled { opacity: 0.3; cursor: default; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════ ÉCRAN MENU ═══════════ -->
+  <div id="screen-menu" class="screen visible">
+    <h1>DJ Set</h1>
+    <div id="themes-grid"><!-- généré par JS --></div>
+    <button id="btn-spotify-login" onclick="window.open('https://accounts.spotify.com/login', '_blank')">
+      <span>●</span> Connexion Spotify
+    </button>
+  </div>
+
+  <!-- ═══════════ ÉCRAN PLAYER ═══════════ -->
+  <div id="screen-player" class="screen">
+    <button id="btn-menu" onclick="showMenu()">← Menu</button>
+    <h1 id="theme-title"></h1>
+
+    <div id="disques-zone">
+      <div class="disques-wrapper" id="disques-wrapper"></div>
+    </div>
+
+    <button id="btn-reponse" onclick="toggleReponse()">
+      <span class="label-default icon">👁</span>
+      <span class="label-default">Voir la réponse</span>
+      <span id="reponse-text"></span>
+    </button>
+
+    <div id="play-zone">
+      <svg id="play-ring" viewBox="0 0 110 110">
+        <circle id="ring-bg" cx="55" cy="55" r="45"/>
+        <circle id="timer-circle" cx="55" cy="55" r="45"/>
+      </svg>
+      <div id="spotify-window">
+        <iframe id="spotify-embed"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          src=""></iframe>
+      </div>
+      <div id="no-track">🚫</div>
+    </div>
+
+    <div id="nav-bar">
+      <span id="progress-text"></span>
+      <button id="btn-suivant" onclick="suivant()">Suivant <span class="arrow">→</span></button>
+    </div>
+  </div>
+
+  <script>
+    // ═══ DONNÉES ═══════════════════════════════════════════════════════════
+    // 7 morceaux par thème : { num, reponse, spotifyId }
+    // spotifyId : partager le morceau sur Spotify → l'ID est dans l'URL
+    const COULEURS_DISQUES = ['#3982a3', '#61c3d3', '#f39fa3', '#e8375f', '#f59923', '#fecd4f', '#77ba4e'];
+
+    function slotsVides() {
+      return Array.from({ length: 7 }, (_, i) => ({ num: i + 1, reponse: '?', spotifyId: '' }));
+    }
+
+    const themes = [
+      {
+        nom: 'Créature', couleur: '#77ba4e',
+        morceaux: [
+          { num: 1, reponse: 'ZOMBIE',     spotifyId: '49wOjOkS4pBK3PQnPnNYjb' },
+          { num: 2, reponse: 'DRAGON',     spotifyId: '0M9QjRGZhvqJATvgQS4Hob' },
+          { num: 3, reponse: 'CRÉATURE',   spotifyId: '' },
+          { num: 4, reponse: 'MONSTRE',    spotifyId: '' },
+          { num: 5, reponse: 'VAMPIRE',    spotifyId: '' },
+          { num: 6, reponse: 'LOUP-GAROU', spotifyId: '' },
+          { num: 7, reponse: 'ALIEN',      spotifyId: '' },
+        ]
+      },
+      {
+        nom: 'Animaux', couleur: '#e8375f',
+        morceaux: [
+          { num: 1, reponse: 'HOMARD',    spotifyId: '0rme3FLbw5o1KLXpJzivjS' },
+          { num: 2, reponse: 'CHIEN',     spotifyId: '64Ny7djQ6rNJspquof2KoX' },
+          { num: 3, reponse: 'OISEAU',    spotifyId: '5jgFfDIR6FR0gvlA56Nakr' },
+          { num: 4, reponse: 'TIGRE',     spotifyId: '2HHtWyy5CgaQbC7XSoOb0e' },
+          { num: 5, reponse: 'COLOMBE',   spotifyId: '6sby78fghipoXHQLeeZFFH' },
+          { num: 6, reponse: 'REQUIN',    spotifyId: '5ygDXis42ncn6kYG14lEVG' },
+          { num: 7, reponse: 'CROCODILE', spotifyId: '6WCeFNVAXUtNczb7lqLiZU' },
+        ]
+      },
+      {
+        nom: 'Météo/Saisons', couleur: '#fecd4f',
+        morceaux: [
+          { num: 1, reponse: 'SOLEIL',   spotifyId: '6dGnYIeXmHdcikdzNNDMm2' }, // Here Comes the Sun — Beatles
+          { num: 2, reponse: 'PLUIE',    spotifyId: '1uvyZBs4IZYRebHIB1747m' }, // Purple Rain — Prince
+          { num: 3, reponse: 'ORAGE',    spotifyId: '14XWXWv5FoCbFzLksawpEe' }, // Riders on the Storm — The Doors
+          { num: 4, reponse: 'NEIGE',    spotifyId: '2aibwv5hGXSgw7Yru8IYTO' }, // Snow (Hey Oh) — RHCP
+          { num: 5, reponse: 'VENT',     spotifyId: '2ZQVJD9I6GCqXmkmMuEoLa' }, // Le Vent nous portera — Noir Désir
+          { num: 6, reponse: 'TONNERRE', spotifyId: '57bgtoPSgt236HzfBOd8kj' }, // Thunderstruck — AC/DC
+          { num: 7, reponse: 'SOLEIL',   spotifyId: '05wIrZSwuaVWhcv5FfqeH0' }, // Walking on Sunshine — Katrina and the Waves
+        ]
+      },
+      {
+        nom: 'Chiffre/Nombre', couleur: '#3982a3',
+        morceaux: [
+          { num: 1, reponse: 'SEPT',   spotifyId: '3dPQuX8Gs42Y7b454ybpMR' }, // Seven Nation Army — The White Stripes
+          { num: 2, reponse: '99',     spotifyId: '2IJftBfq7pJ43tfnOR0RB3' }, // 99 Luftballons — Nena
+          { num: 3, reponse: 'UN',     spotifyId: '3G69vJMWsX6ZohTykad2AU' }, // One — U2
+          { num: 4, reponse: 'TROIS',  spotifyId: '3X9XJLwQPWqRnsNaL9z6ss' }, // 3 nuits par semaine — Indochine
+          { num: 5, reponse: 'CINQ',   spotifyId: '6x4tKaOzfNJpEJHySoiJcs' }, // Mambo No. 5 — Lou Bega
+          { num: 6, reponse: 'DEUX',   spotifyId: '3GfOAdcoc3X5GPiiXmpBjK' }, // Song 2 — Blur
+          { num: 7, reponse: '?',      spotifyId: '' },
+        ]
+      },
+      {
+        nom: 'Partie du corps', couleur: '#f39fa3',
+        morceaux: [
+          { num: 1, reponse: 'CŒUR',    spotifyId: '4v2rkl1mC3zVAz0nXMx9r4' }, // Heart of Glass — Blondie
+          { num: 2, reponse: 'HANCHES', spotifyId: '3d0WouFnFmr0K3kjeza3fF' }, // Hips Don't Lie — Shakira
+          { num: 3, reponse: 'VISAGE',  spotifyId: '5AVdnvs7tAOp0OJRgSc4wc' }, // Ma Gueule — Johnny Hallyday
+          { num: 4, reponse: 'CŒUR',    spotifyId: '33LC84JgLvK2KuW43MfaNq' }, // My Heart Will Go On — Céline Dion
+          { num: 5, reponse: 'YEUX',    spotifyId: '0pUVeEgZuNyFzIMKp67RbS' }, // Eyes Without a Face — Billy Idol
+          { num: 6, reponse: 'YEUX',    spotifyId: '1fU9wVDi3yZrawv1Rc4vcS' }, // Les Yeux revolver — Marc Lavoine
+          { num: 7, reponse: 'CŒUR',    spotifyId: '0FNFkTfptDRi0AFaulrpOY' }, // Comme des enfants — Cœur de Pirate
+        ]
+      },
+      { nom: 'Chanteur',    couleur: '#61c3d3', morceaux: slotsVides() },
+      { nom: 'Réalisateur', couleur: '#f59923', morceaux: slotsVides() },
+      { nom: 'Groupe',      couleur: '#f39fa3', morceaux: slotsVides() },
+      { nom: 'Film',        couleur: '#fecd4f', morceaux: slotsVides() },
+      { nom: 'Série',       couleur: '#3982a3', morceaux: slotsVides() },
+      { nom: 'Pays',        couleur: '#77ba4e', morceaux: slotsVides() },
+      { nom: 'Sport',       couleur: '#e8375f', morceaux: slotsVides() },
+      { nom: 'Décennie',    couleur: '#61c3d3', morceaux: slotsVides() },
+    ];
+
+    // ═══ ÉTAT ══════════════════════════════════════════════════════════════
+    const TIMER_DURATION = 30;
+    const CIRCUMFERENCE = 2 * Math.PI * 45;
+
+    let themeActif = null;
+    let current = 0;
+    let isPlaying = false;
+    let reponseVisible = false;
+
+    const screenMenu   = document.getElementById('screen-menu');
+    const screenPlayer = document.getElementById('screen-player');
+    const themesGrid   = document.getElementById('themes-grid');
+    const themeTitle   = document.getElementById('theme-title');
+    const wrapper      = document.getElementById('disques-wrapper');
+    const btnSuivant   = document.getElementById('btn-suivant');
+    const progressText = document.getElementById('progress-text');
+    const btnReponse   = document.getElementById('btn-reponse');
+    const reponseText  = document.getElementById('reponse-text');
+    const timerCircle  = document.getElementById('timer-circle');
+    const spotifyEmbed = document.getElementById('spotify-embed');
+    const playZone     = document.getElementById('play-zone');
+
+    // ═══ MENU ══════════════════════════════════════════════════════════════
+    themes.forEach((t, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'theme-tile';
+      btn.innerHTML = `<span class="theme-dot" style="background:${t.couleur}"></span>${t.nom}`;
+      btn.onclick = () => openTheme(i);
+      themesGrid.appendChild(btn);
+    });
+
+    function openTheme(i) {
+      themeActif = themes[i];
+      current = 0;
+      themeTitle.textContent = themeActif.nom;
+      buildDiscs();
+      screenMenu.classList.remove('visible');
+      screenPlayer.classList.add('visible');
+      render();
+    }
+
+    function showMenu() {
+      stopPlay();
+      spotifyEmbed.src = '';
+      screenPlayer.classList.remove('visible');
+      screenMenu.classList.add('visible');
+    }
+
+    // ═══ DISQUES ═══════════════════════════════════════════════════════════
+    function buildDiscs() {
+      wrapper.innerHTML = '';
+      themeActif.morceaux.forEach((m, i) => {
+        const div = document.createElement('div');
+        div.className = 'disc';
+        div.id = `disc-${i}`;
+        div.style.background = `radial-gradient(circle at 35% 35%, ${COULEURS_DISQUES[i]}, ${COULEURS_DISQUES[i]} 55%, rgba(0,0,0,0.35))`;
+        div.style.backgroundColor = COULEURS_DISQUES[i];
+        div.innerHTML = `<div class="disc-label" style="color:${COULEURS_DISQUES[i]}">${m.num}</div>`;
+        div.onclick = () => { current = i; render(); };
+        wrapper.appendChild(div);
+      });
+    }
+
+    function render() {
+      const m = themeActif.morceaux[current];
+      progressText.textContent = `${m.num} / 7`;
+      btnSuivant.disabled = current === themeActif.morceaux.length - 1;
+
+      themeActif.morceaux.forEach((_, i) => {
+        const el = document.getElementById(`disc-${i}`);
+        const dist = Math.abs(i - current);
+        el.classList.remove('active', 'near1', 'near2', 'playing');
+        if (i === current) el.classList.add('active');
+        else if (dist === 1) el.classList.add('near1');
+        else if (dist === 2) el.classList.add('near2');
+      });
+
+      if (m.spotifyId) {
+        playZone.classList.remove('empty');
+        spotifyEmbed.src = `https://open.spotify.com/embed/track/${m.spotifyId}?utm_source=generator&theme=0`;
+      } else {
+        playZone.classList.add('empty');
+        spotifyEmbed.src = '';
+      }
+
+      resetTimer();
+      stopPlay();
+      hideReponse();
+    }
+
+    // ═══ SYNC SPOTIFY ══════════════════════════════════════════════════════
+    window.addEventListener('message', (e) => {
+      if (e.origin !== 'https://open.spotify.com') return;
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'playback_update') {
+          if (!data.payload.isPaused && !isPlaying) startPlay();
+          if (data.payload.isPaused && isPlaying) pauseTimer();
+        }
+      } catch (_) {}
+    });
+
+    function startPlay() {
+      isPlaying = true;
+      const d = document.getElementById(`disc-${current}`);
+      if (d) d.classList.add('playing');
+      startTimer();
+    }
+
+    function pauseTimer() {
+      isPlaying = false;
+      const d = document.getElementById(`disc-${current}`);
+      if (d) d.classList.remove('playing');
+      // fige la progression au moment de la pause
+      elapsedMs = performance.now() - playStartTs;
+      cancelAnimationFrame(rafId);
+    }
+
+    function stopPlay() {
+      isPlaying = false;
+      const d = document.getElementById(`disc-${current}`);
+      if (d) d.classList.remove('playing');
+      cancelAnimationFrame(rafId);
+    }
+
+    // ═══ TIMER (animation fluide via requestAnimationFrame) ═══════════════════
+    let elapsedMs = 0;      // temps écoulé cumulé (survit aux pauses)
+    let playStartTs = 0;    // timestamp du dernier démarrage
+    let rafId = null;
+
+    function startTimer() {
+      cancelAnimationFrame(rafId);
+      playStartTs = performance.now() - elapsedMs;
+      tick();
+    }
+
+    function tick() {
+      const elapsed = performance.now() - playStartTs;
+      const progress = Math.min(elapsed / (TIMER_DURATION * 1000), 1);
+      // segment vert tourne sens horaire : offset négatif = avance sur le cercle
+      timerCircle.style.strokeDashoffset = -CIRCUMFERENCE * progress;
+      if (progress >= 1) {
+        timerCircle.classList.add('done');
+        stopPlay();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function resetTimer() {
+      cancelAnimationFrame(rafId);
+      elapsedMs = 0;
+      timerCircle.style.strokeDashoffset = 0;
+      timerCircle.classList.remove('done');
+    }
+
+    // ═══ RÉPONSE ═══════════════════════════════════════════════════════════
+    function toggleReponse() {
+      if (!reponseVisible) {
+        reponseText.textContent = themeActif.morceaux[current].reponse;
+        btnReponse.classList.add('revealed');
+        reponseVisible = true;
+      } else {
+        hideReponse();
+      }
+    }
+
+    function hideReponse() {
+      btnReponse.classList.remove('revealed');
+      reponseVisible = false;
+    }
+
+    // ═══ NAVIGATION ════════════════════════════════════════════════════════
+    function suivant() {
+      if (current < themeActif.morceaux.length - 1) {
+        current++;
+        render();
+      }
+    }
+  </script>
+
+</body>
+</html>
