@@ -267,18 +267,18 @@
       z-index: 2;
     }
 
-    /* Le widget compact Spotify fait 80px de haut ; son bouton play est centré
-       verticalement (~40px) et collé à l'extrême droite (~30px du bord droit).
-       On zoome sur ce point précis pour qu'il tombe au centre de #spotify-window. */
+    /* Le widget fait 80px de haut, bouton play ~à droite : on cale l'iframe
+       pour que son bouton play tombe dans la fenêtre */
     #spotify-embed {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: -8px;
+      right: -8px;
       width: 300px;
       height: 80px;
       border: none;
-      transform: scale(2.2);
-      transform-origin: calc(100% - 30px) 40px;
+      /* zoom sur le bouton play pour masquer les éléments voisins du widget */
+      transform: scale(1.5);
+      transform-origin: calc(100% - 28px) 46px;
     }
 
     /* Anneau sombre autour du play */
